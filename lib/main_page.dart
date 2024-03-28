@@ -28,7 +28,7 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _getImageFromCamera() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
       ImageCropper cropper = ImageCropper();
       final croppedImage = await cropper.cropImage(
@@ -70,7 +70,7 @@ class _MainPageState extends State<MainPage> {
               },
               {
                 "inlineData": {
-                  "mimeType": "image/png",
+                  "mimeType": "image/jpeg",
                   "data": base64Image,
                 }
               }
@@ -104,21 +104,34 @@ class _MainPageState extends State<MainPage> {
         ]
       },
     );
+    Future.delayed(
+      Duration(minutes: 1),
+      () {
+        setState(() {
+          _isSending = false;
+        });
+      },
+    );
     http.Response response = await http.post(
       Uri.parse(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=$apiKey"),
+          "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${apiKey}"),
       headers: {"Content-Type": "application/json"},
       body: requestBody,
     );
+
     if (response.statusCode == 200) {
       Map<String, dynamic> jsonBody = json.decode(response.body);
+      print(response.body);
       setState(() {
+        _isSending = false;
         _responseBody =
             jsonBody["candidates"][0]["content"]["parts"][0]["text"];
-        _isSending = false;
       });
     } else {
-      _isSending = false;
+      print(response.body);
+      setState(() {
+        _isSending = false;
+      });
     }
   }
 
@@ -169,13 +182,7 @@ class _MainPageState extends State<MainPage> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            setState(() {
-              !_isSending
-                  ? _image == null
-                      ? _openCamera()
-                      : sendImage(_image)
-                  : null;
-            });
+            _image == null ? _openCamera() : sendImage(_image);
           },
           tooltip: _image == null ? 'Pick Image' : 'Send image',
           child: Icon(_image == null ? Icons.camera_alt : Icons.send),
